@@ -1,0 +1,1006 @@
+{
+  "info": {
+    "name": "Koperasi Simpan Pinjam API",
+    "_postman_id": "koperasi-simpan-pinjam-2025",
+    "description": "Koleksi API lengkap untuk Sistem Koperasi Simpan Pinjam\n\n## Cara Pakai\n1. Import collection ini ke Postman\n2. Set variable `base_url` = `http://localhost:8080/api`\n3. Jalankan **Auth > Login (Admin)** atau **Auth > Login (Member)**\n4. Token otomatis tersimpan ke variable `token`\n5. Semua endpoint lain langsung bisa dipakai\n\n## Akun Default\n- Admin: `admin@koperasi.id` / `admin123`\n- Member: `member@koperasi.id` / `member123`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "member_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "pinjaman_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "angsuran_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "2",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Login Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "    pm.collectionVariables.set('token', json.data.accessToken);",
+                  "    pm.test('Login berhasil - token tersimpan', function() {",
+                  "        pm.expect(json.success).to.be.true;",
+                  "    });",
+                  "    console.log('Token Admin tersimpan:', json.data.accessToken.substring(0, 30) + '...');",
+                  "} else {",
+                  "    pm.test('Login gagal', function() {",
+                  "        pm.expect(json.success).to.be.true;",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@koperasi.id\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login sebagai ADMIN. Token otomatis tersimpan ke variable `token`."
+          }
+        },
+        {
+          "name": "Login Member",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.success && json.data && json.data.accessToken) {",
+                  "    pm.collectionVariables.set('member_token', json.data.accessToken);",
+                  "    pm.collectionVariables.set('token', json.data.accessToken);",
+                  "    pm.test('Login member berhasil - token tersimpan', function() {",
+                  "        pm.expect(json.success).to.be.true;",
+                  "    });",
+                  "    console.log('Token Member tersimpan:', json.data.accessToken.substring(0, 30) + '...');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"member@koperasi.id\",\n  \"password\": \"member123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login sebagai MEMBER. Token otomatis tersimpan ke variable `token` dan `member_token`."
+          }
+        },
+        {
+          "name": "Register Member Baru",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"namaLengkap\": \"Andi Wijaya\",\n  \"email\": \"andi@email.com\",\n  \"password\": \"rahasia123\",\n  \"noTelepon\": \"08123456789\",\n  \"alamat\": \"Jl. Gatot Subroto No. 5, Jakarta\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Daftarkan member baru. Tidak butuh token. Email harus unik."
+          }
+        },
+        {
+          "name": "Get Profil Saya",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "profile"]
+            },
+            "description": "Ambil data profil user yang sedang login."
+          }
+        },
+        {
+          "name": "Ganti Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"passwordLama\": \"member123\",\n  \"passwordBaru\": \"newpassword456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "change-password"]
+            },
+            "description": "Ganti password user yang sedang login."
+          }
+        }
+      ]
+    },
+    {
+      "name": "💰 Simpanan",
+      "item": [
+        {
+          "name": "Cek Saldo Simpanan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/simpanan/saldo",
+              "host": ["{{base_url}}"],
+              "path": ["simpanan", "saldo"]
+            },
+            "description": "Lihat saldo simpanan POKOK, WAJIB, dan SUKARELA milik user yang login."
+          }
+        },
+        {
+          "name": "Setor Simpanan Pokok",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jenis\": \"POKOK\",\n  \"jumlah\": 100000,\n  \"keterangan\": \"Simpanan pokok awal masuk koperasi\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/simpanan/setor",
+              "host": ["{{base_url}}"],
+              "path": ["simpanan", "setor"]
+            },
+            "description": "Setor simpanan POKOK. Jenis: POKOK | WAJIB | SUKARELA. Minimal Rp 1.000."
+          }
+        },
+        {
+          "name": "Setor Simpanan Wajib",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jenis\": \"WAJIB\",\n  \"jumlah\": 50000,\n  \"keterangan\": \"Simpanan wajib bulan Maret 2025\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/simpanan/setor",
+              "host": ["{{base_url}}"],
+              "path": ["simpanan", "setor"]
+            },
+            "description": "Setor simpanan WAJIB bulanan."
+          }
+        },
+        {
+          "name": "Setor Simpanan Sukarela",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jenis\": \"SUKARELA\",\n  \"jumlah\": 200000,\n  \"keterangan\": \"Tabungan ekstra\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/simpanan/setor",
+              "host": ["{{base_url}}"],
+              "path": ["simpanan", "setor"]
+            },
+            "description": "Setor simpanan SUKARELA (bebas kapan saja)."
+          }
+        },
+        {
+          "name": "Tarik Simpanan Sukarela",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jenis\": \"SUKARELA\",\n  \"jumlah\": 100000,\n  \"keterangan\": \"Penarikan untuk kebutuhan darurat\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/simpanan/tarik",
+              "host": ["{{base_url}}"],
+              "path": ["simpanan", "tarik"]
+            },
+            "description": "Tarik simpanan SUKARELA atau WAJIB. Simpanan POKOK tidak bisa ditarik."
+          }
+        },
+        {
+          "name": "Tarik Simpanan Wajib",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jenis\": \"WAJIB\",\n  \"jumlah\": 50000,\n  \"keterangan\": \"Penarikan simpanan wajib\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/simpanan/tarik",
+              "host": ["{{base_url}}"],
+              "path": ["simpanan", "tarik"]
+            }
+          }
+        },
+        {
+          "name": "Riwayat Transaksi Simpanan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/simpanan/riwayat?page=0&size=10&sort=tanggalTransaksi,desc",
+              "host": ["{{base_url}}"],
+              "path": ["simpanan", "riwayat"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" },
+                { "key": "sort", "value": "tanggalTransaksi,desc" }
+              ]
+            },
+            "description": "Riwayat semua transaksi simpanan milik user yang login. Support pagination."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏦 Pinjaman",
+      "item": [
+        {
+          "name": "Ajukan Pinjaman",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('pinjaman_id', json.data.id.toString());",
+                  "    pm.test('Pinjaman berhasil diajukan - ID tersimpan', function() {",
+                  "        pm.expect(json.success).to.be.true;",
+                  "    });",
+                  "    console.log('Pinjaman ID tersimpan:', json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jumlahPinjaman\": 5000000,\n  \"tenorBulan\": 12,\n  \"tujuanPinjaman\": \"Modal usaha warung makan\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pinjaman/ajukan",
+              "host": ["{{base_url}}"],
+              "path": ["pinjaman", "ajukan"]
+            },
+            "description": "Ajukan pinjaman baru. Minimal Rp 500.000, tenor 1-60 bulan. ID pinjaman otomatis tersimpan ke variable `pinjaman_id`."
+          }
+        },
+        {
+          "name": "Detail Pinjaman",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pinjaman/{{pinjaman_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["pinjaman", "{{pinjaman_id}}"]
+            },
+            "description": "Lihat detail pinjaman berdasarkan ID. Member hanya bisa lihat miliknya sendiri."
+          }
+        },
+        {
+          "name": "Jadwal Angsuran",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.success && json.data && json.data.length > 0) {",
+                  "    var angsuranBelumBayar = json.data.find(a => a.status === 'BELUM_BAYAR');",
+                  "    if (angsuranBelumBayar) {",
+                  "        pm.collectionVariables.set('angsuran_id', angsuranBelumBayar.id.toString());",
+                  "        console.log('Angsuran ID pertama (BELUM_BAYAR) tersimpan:', angsuranBelumBayar.id);",
+                  "    }",
+                  "    pm.test('Jadwal angsuran berhasil diambil', function() {",
+                  "        pm.expect(json.success).to.be.true;",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pinjaman/{{pinjaman_id}}/jadwal-angsuran",
+              "host": ["{{base_url}}"],
+              "path": ["pinjaman", "{{pinjaman_id}}", "jadwal-angsuran"]
+            },
+            "description": "Lihat jadwal cicilan pinjaman. ID angsuran BELUM_BAYAR pertama otomatis tersimpan ke variable `angsuran_id`."
+          }
+        },
+        {
+          "name": "Bayar Angsuran",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"angsuranId\": {{angsuran_id}},\n  \"keterangan\": \"Pembayaran angsuran bulan ini\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/pinjaman/{{pinjaman_id}}/bayar-angsuran",
+              "host": ["{{base_url}}"],
+              "path": ["pinjaman", "{{pinjaman_id}}", "bayar-angsuran"]
+            },
+            "description": "Bayar cicilan. Gunakan `angsuran_id` dari response jadwal angsuran. Jika semua lunas, status pinjaman otomatis LUNAS."
+          }
+        },
+        {
+          "name": "Riwayat Pinjaman",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pinjaman/riwayat?page=0&size=10",
+              "host": ["{{base_url}}"],
+              "path": ["pinjaman", "riwayat"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            },
+            "description": "Riwayat semua pinjaman milik user yang login."
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Report Member",
+      "item": [
+        {
+          "name": "Dashboard Member",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/report/dashboard",
+              "host": ["{{base_url}}"],
+              "path": ["report", "dashboard"]
+            },
+            "description": "Ringkasan data member yang sedang login: saldo simpanan, info pinjaman, angsuran terlambat."
+          }
+        }
+      ]
+    },
+    {
+      "name": "👨‍💼 Admin - Member",
+      "item": [
+        {
+          "name": "Daftar Semua Member",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/members?page=0&size=20",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "members"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "search", "value": "", "disabled": true }
+              ]
+            },
+            "description": "Lihat semua member. Tambahkan query `search=nama` untuk filter berdasarkan nama atau nomor anggota."
+          }
+        },
+        {
+          "name": "Cari Member by Nama",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/members?search=budi&page=0&size=20",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "members"],
+              "query": [
+                { "key": "search", "value": "budi" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            },
+            "description": "Cari member berdasarkan nama atau nomor anggota."
+          }
+        },
+        {
+          "name": "Detail Member by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/members/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "members", "{{user_id}}"]
+            },
+            "description": "Lihat detail satu member berdasarkan ID."
+          }
+        },
+        {
+          "name": "Update Status Member - SUSPEND",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/members/{{user_id}}/status?status=SUSPEND",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "members", "{{user_id}}", "status"],
+              "query": [
+                { "key": "status", "value": "SUSPEND" }
+              ]
+            },
+            "description": "Ubah status anggota. Nilai: AKTIF | NON_AKTIF | SUSPEND"
+          }
+        },
+        {
+          "name": "Update Status Member - AKTIF",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/members/{{user_id}}/status?status=AKTIF",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "members", "{{user_id}}", "status"],
+              "query": [
+                { "key": "status", "value": "AKTIF" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Profil Member",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/members/{{user_id}}/profile?namaLengkap=Budi Santoso Updated&noTelepon=08199999999&alamat=Jl. Baru No. 99",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "members", "{{user_id}}", "profile"],
+              "query": [
+                { "key": "namaLengkap", "value": "Budi Santoso Updated" },
+                { "key": "noTelepon", "value": "08199999999" },
+                { "key": "alamat", "value": "Jl. Baru No. 99" }
+              ]
+            },
+            "description": "Update profil member. Semua parameter opsional — hanya kirim yang ingin diubah."
+          }
+        }
+      ]
+    },
+    {
+      "name": "👨‍💼 Admin - Simpanan",
+      "item": [
+        {
+          "name": "Semua Transaksi Simpanan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/simpanan?page=0&size=20",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "simpanan"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "userId", "value": "", "disabled": true }
+              ]
+            },
+            "description": "Lihat semua transaksi simpanan. Tambahkan `userId=2` untuk filter per member."
+          }
+        },
+        {
+          "name": "Transaksi Simpanan per Member",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/simpanan?userId={{user_id}}&page=0&size=20",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "simpanan"],
+              "query": [
+                { "key": "userId", "value": "{{user_id}}" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cek Saldo Member",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/simpanan/saldo/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "simpanan", "saldo", "{{user_id}}"]
+            },
+            "description": "Lihat saldo simpanan (POKOK, WAJIB, SUKARELA) dari member tertentu."
+          }
+        },
+        {
+          "name": "Catat Setoran untuk Member",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jenis\": \"POKOK\",\n  \"jumlah\": 100000,\n  \"keterangan\": \"Simpanan pokok awal dicatat oleh admin\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/simpanan/setor/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "simpanan", "setor", "{{user_id}}"]
+            },
+            "description": "Admin mencatat setoran atas nama member. Jenis: POKOK | WAJIB | SUKARELA."
+          }
+        },
+        {
+          "name": "Catat Penarikan untuk Member",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jenis\": \"SUKARELA\",\n  \"jumlah\": 50000,\n  \"keterangan\": \"Penarikan dicatat oleh admin\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/simpanan/tarik/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "simpanan", "tarik", "{{user_id}}"]
+            },
+            "description": "Admin mencatat penarikan atas nama member."
+          }
+        }
+      ]
+    },
+    {
+      "name": "👨‍💼 Admin - Pinjaman",
+      "item": [
+        {
+          "name": "Semua Pinjaman",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/pinjaman?page=0&size=20",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "pinjaman"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "status", "value": "", "disabled": true },
+                { "key": "userId", "value": "", "disabled": true }
+              ]
+            },
+            "description": "Lihat semua pinjaman. Filter opsional: `status` dan `userId`."
+          }
+        },
+        {
+          "name": "Filter Pinjaman - PENDING",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/pinjaman?status=PENDING&page=0&size=20",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "pinjaman"],
+              "query": [
+                { "key": "status", "value": "PENDING" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            },
+            "description": "Filter pinjaman yang menunggu persetujuan."
+          }
+        },
+        {
+          "name": "Filter Pinjaman - DISETUJUI",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/pinjaman?status=DISETUJUI&page=0&size=20",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "pinjaman"],
+              "query": [
+                { "key": "status", "value": "DISETUJUI" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Setujui Pinjaman",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"disetujui\": true,\n  \"bungaPerBulan\": 1.5,\n  \"keteranganAdmin\": \"Disetujui sesuai prosedur koperasi\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/pinjaman/{{pinjaman_id}}/proses",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "pinjaman", "{{pinjaman_id}}", "proses"]
+            },
+            "description": "Setujui pinjaman dan tentukan bunga. Jadwal angsuran otomatis digenerate dengan metode anuitas."
+          }
+        },
+        {
+          "name": "Tolak Pinjaman",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"disetujui\": false,\n  \"keteranganAdmin\": \"Dokumen persyaratan tidak lengkap, silakan lengkapi dan ajukan kembali\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/pinjaman/{{pinjaman_id}}/proses",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "pinjaman", "{{pinjaman_id}}", "proses"]
+            },
+            "description": "Tolak pengajuan pinjaman beserta alasannya."
+          }
+        },
+        {
+          "name": "Jadwal Angsuran (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/pinjaman/{{pinjaman_id}}/jadwal-angsuran",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "pinjaman", "{{pinjaman_id}}", "jadwal-angsuran"]
+            },
+            "description": "Admin melihat jadwal angsuran pinjaman milik member manapun."
+          }
+        }
+      ]
+    },
+    {
+      "name": "👨‍💼 Admin - Report",
+      "item": [
+        {
+          "name": "Dashboard Admin",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/report/dashboard",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "report", "dashboard"]
+            },
+            "description": "Statistik keseluruhan koperasi: total anggota, simpanan, pinjaman aktif, angsuran jatuh tempo."
+          }
+        },
+        {
+          "name": "Rekap Simpanan Semua Member",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/report/rekap-simpanan",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "report", "rekap-simpanan"]
+            },
+            "description": "Rekap saldo simpanan POKOK, WAJIB, SUKARELA untuk semua member."
+          }
+        },
+        {
+          "name": "Rekap Pinjaman Semua Member",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/report/rekap-pinjaman",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "report", "rekap-pinjaman"]
+            },
+            "description": "Rekap semua pinjaman dari semua member beserta status dan sisa pinjaman."
+          }
+        }
+      ]
+    }
+  ]
+}
