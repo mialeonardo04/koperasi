@@ -73,4 +73,11 @@ public class JwtUtil {
         byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
         return Keys.hmacShaKeyFor(keyBytes);
     }
+
+    public String extractEmailFromHeader(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("Token tidak valid");
+        }
+        return extractUsername(authHeader.substring(7));
+    }
 }

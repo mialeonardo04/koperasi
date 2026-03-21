@@ -27,6 +27,9 @@ public interface KelompokAnggotaRepository extends JpaRepository<KelompokAnggota
 
     Optional<KelompokAnggota> findByKelompokIdAndUserId(Long kelompokId, Long userId);
 
+    @Query("SELECT ka FROM KelompokAnggota ka JOIN FETCH ka.kelompok WHERE ka.user.id = :userId")
+    List<KelompokAnggota> findByUserId(@Param("userId") Long userId);
+
     /** Ambil semua user_id yang terikat kelompok AKTIF */
     @Query("SELECT ka.user.id FROM KelompokAnggota ka WHERE ka.kelompok.status = 'AKTIF'")
     List<Long> findUserIdsTerikatKelompokAktif();

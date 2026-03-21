@@ -23,6 +23,7 @@ public class ReportService {
     private final PinjamanRepository        pinjamanRepository;
     private final AngsuranPinjamanRepository angsuranRepository;
     private final PinjamanKelompokRepository pinjamanKelompokRepository;
+    private final KelompokAnggotaRepository  kelompokAnggotaRepository;
 
     @Transactional(readOnly = true)
     public ReportDto.DashboardAdmin getDashboardAdmin() {
@@ -63,16 +64,39 @@ public class ReportService {
         BigDecimal simpananSukarela = simpananRepository.getSaldoByUserAndJenis(userId, Simpanan.JenisSimpanan.SUKARELA);
         BigDecimal totalSimpanan    = simpananPokok.add(simpananWajib).add(simpananSukarela);
 
+        // Pinjaman individu aktif (tidak dipakai lagi, tapi tetap dihitung)
         List<com.koperasi.entity.Pinjaman> pinjamanAktifList = pinjamanRepository
                 .findByUserIdAndStatus(userId, com.koperasi.entity.Pinjaman.StatusPinjaman.DISETUJUI);
 
-        BigDecimal totalPinjaman = pinjamanAktifList.stream()
-                .map(com.koperasi.entity.Pinjaman::getJumlahPinjaman)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Pinjaman kelompok — ambil dari kelompok yang user ini jadi anggota
+        List<com.koperasi.entity.KelompokAnggota> keanggotaan = kelompokAnggotaRepository
+                .findByUserId(userId);
 
-        BigDecimal sisaPinjaman = pinjamanAktifList.stream()
-                .map(com.koperasi.entity.Pinjaman::getSisaPinjaman)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalPinjamanKelompok = BigDecimal.ZERO;
+        BigDecimal sisaPinjamanKelompok  = BigDecimal.ZERO;
+        long jumlahPinjamanKelompok = 0;
+
+        for (com.koperasi.entity.KelompokAnggota ka : keanggotaan) {
+            if (ka.getKelompok().getStatus() != com.koperasi.entity.Kelompok.StatusKelompok.AKTIF) continue;
+            // Cari pinjaman aktif kelompok ini
+            java.util.Optional<com.koperasi.entity.PinjamanKelompok> pk =
+                    pinjamanKelompokRepository.findActivePinjamanByKelompokId(ka.getKelompok().getId());
+            if (pk.isPresent() && pk.get().getStatus() == com.koperasi.entity.PinjamanKelompok.StatusPinjaman.DISETUJUI) {
+                com.koperasi.entity.PinjamanKelompok p = pk.get();
+                totalPinjamanKelompok = totalPinjamanKelompok.add(p.getJumlahPinjaman());
+                sisaPinjamanKelompok  = sisaPinjamanKelompok.add(p.getSisaPinjaman());
+                jumlahPinjamanKelompok++;
+                break; // satu user hanya bisa di satu kelompok aktif
+            }
+        }
+
+        // Hitung persentase sisa pinjaman kelompok
+        BigDecimal pctSisa = BigDecimal.ZERO;
+        if (totalPinjamanKelompok.compareTo(BigDecimal.ZERO) > 0) {
+            pctSisa = sisaPinjamanKelompok
+                    .multiply(new BigDecimal("100"))
+                    .divide(totalPinjamanKelompok, 2, java.math.RoundingMode.HALF_UP);
+        }
 
         long angsuranTerlambat = angsuranRepository.findAngsuranTerlambat(userId, LocalDate.now()).size();
 
@@ -83,9 +107,9 @@ public class ReportService {
                 .simpananWajib(simpananWajib)
                 .simpananSukarela(simpananSukarela)
                 .totalSimpanan(totalSimpanan)
-                .pinjamanAktif((long) pinjamanAktifList.size())
-                .totalPinjaman(totalPinjaman)
-                .sisaPinjaman(sisaPinjaman)
+                .pinjamanAktif(jumlahPinjamanKelompok)
+                .totalPinjaman(totalPinjamanKelompok)
+                .sisaPinjaman(pctSisa)       // persentase sisa
                 .angsuranTerlambat(angsuranTerlambat)
                 .build();
     }
