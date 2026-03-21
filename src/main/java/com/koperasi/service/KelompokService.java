@@ -328,14 +328,23 @@ public class KelompokService {
         AngsuranKelompok.MetodeBayar metode = AngsuranKelompok.MetodeBayar.valueOf(
                 req.getMetodeBayar() != null ? req.getMetodeBayar() : "TRANSFER");
 
-        // Jika SIMPANAN — cek saldo
+        // Jika SIMPANAN — cek saldo per jenis
         if (metode == AngsuranKelompok.MetodeBayar.SIMPANAN) {
-            BigDecimal totalSaldo = simpananRepo.getTotalSimpananByUser(userId);
-            if (totalSaldo.compareTo(angsuran.getJumlahAngsuran()) < 0) {
+            Simpanan.JenisSimpanan jenis = req.getJenisSimpanan() != null
+                    ? Simpanan.JenisSimpanan.valueOf(req.getJenisSimpanan())
+                    : Simpanan.JenisSimpanan.SUKARELA;
+            BigDecimal saldoJenis = simpananRepo.getSaldoByUserAndJenis(userId, jenis);
+            if (saldoJenis.compareTo(angsuran.getJumlahAngsuran()) < 0) {
                 throw new IllegalStateException(
-                        "Saldo simpanan tidak cukup. Saldo: Rp " + formatRupiah(totalSaldo) +
+                        "Saldo " + jenis.name() + " tidak cukup. Saldo: Rp " + formatRupiah(saldoJenis) +
                                 ", dibutuhkan: Rp " + formatRupiah(angsuran.getJumlahAngsuran()));
             }
+        }
+
+        // Simpan jenis simpanan di keterangan untuk referensi saat eksekusi
+        String ket = req.getKeterangan();
+        if (metode == AngsuranKelompok.MetodeBayar.SIMPANAN && req.getJenisSimpanan() != null) {
+            ket = "Bayar angsuran dari simpanan " + req.getJenisSimpanan();
         }
 
         TransaksiPending pending = TransaksiPending.builder()
@@ -343,12 +352,30 @@ public class KelompokService {
                 .jenisTransaksi(TransaksiPending.JenisTransaksi.BAYAR_ANGSURAN_KELOMPOK)
                 .angsuranKelompok(angsuran)
                 .jumlah(angsuran.getJumlahAngsuran())
-                .keterangan(req.getKeterangan())
+                .keterangan(ket)
                 .buktiBayar(metode == AngsuranKelompok.MetodeBayar.TRANSFER ? req.getBuktiBayar() : null)
                 .metodeBayar(metode)
                 .status(TransaksiPending.StatusPending.PENDING)
                 .build();
-        return pendingRepo.save(pending);
+        pending = pendingRepo.save(pending);
+
+        // Notif ke admin
+        if (adminChatId != null && !adminChatId.isBlank()) {
+            String kelompokNama = pinjaman.getKelompok().getNamaKelompok();
+            String metodeTeks = metode == AngsuranKelompok.MetodeBayar.SIMPANAN
+                    ? "Dari simpanan " + (req.getJenisSimpanan() != null ? req.getJenisSimpanan() : "")
+                    : "Transfer";
+            String pesan = "Ada pengajuan bayar angsuran kelompok!" + "\n\n"
+                    + "Kelompok  : " + kelompokNama + "\n"
+                    + "Anggota   : " + user.getNamaLengkap() + "\n"
+                    + "Angsuran  : Ke-" + angsuran.getPeriodeKe() + "\n"
+                    + "Jumlah    : Rp " + formatRupiah(angsuran.getJumlahAngsuran()) + "\n"
+                    + "Metode    : " + metodeTeks + "\n\n"
+                    + "Silakan buka halaman Pengajuan untuk memprosesnya.";
+            telegramService.send(adminChatId, pesan);
+        }
+
+        return pending;
     }
 
     @Transactional
@@ -370,9 +397,15 @@ public class KelompokService {
         pinjaman.setSisaPinjaman(
                 pinjaman.getSisaPinjaman().subtract(angsuran.getPokok()).max(BigDecimal.ZERO));
 
-        // Jika SIMPANAN — potong saldo simpanan sukarela/wajib
+        // Jika SIMPANAN — potong saldo jenis yang dipilih
         if (angsuran.getMetodeBayar() == AngsuranKelompok.MetodeBayar.SIMPANAN) {
-            potongSaldoSimpanan(pending.getUser(), angsuran.getJumlahAngsuran());
+            // Coba parse jenis dari keterangan pending
+            Simpanan.JenisSimpanan jenisPotong = Simpanan.JenisSimpanan.SUKARELA;
+            if (pending.getKeterangan() != null) {
+                if (pending.getKeterangan().contains("WAJIB")) jenisPotong = Simpanan.JenisSimpanan.WAJIB;
+                else if (pending.getKeterangan().contains("POKOK")) jenisPotong = Simpanan.JenisSimpanan.POKOK;
+            }
+            potongSaldoSimpananJenis(pending.getUser(), angsuran.getJumlahAngsuran(), jenisPotong);
         }
 
         // Cek apakah semua angsuran lunas
@@ -660,6 +693,20 @@ public class KelompokService {
                 telegramService.send(chatId, pesan);
             }
         }
+    }
+
+    private void potongSaldoSimpananJenis(User user, BigDecimal jumlah, Simpanan.JenisSimpanan jenis) {
+        Simpanan s = Simpanan.builder()
+                .user(user)
+                .jenis(jenis)
+                .jumlah(jumlah)
+                .tipe(Simpanan.TipeTransaksi.TARIK)
+                .keterangan("Bayar angsuran kelompok dari simpanan " + jenis.name())
+                .tanggalTransaksi(java.time.LocalDateTime.now())
+                .build();
+        simpananRepo.save(s);
+        user.setTotalSimpanan(simpananRepo.getTotalSimpananByUser(user.getId()));
+        userRepo.save(user);
     }
 
     private void potongSaldoSimpanan(User user, BigDecimal jumlah) {

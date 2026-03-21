@@ -45,8 +45,9 @@ public class KelompokDto {
     public static class BayarAngsuranRequest {
         @NotNull
         private Long angsuranId;
-        private String metodeBayar; // SIMPANAN atau TRANSFER
-        private String buktiBayar;  // path foto jika TRANSFER
+        private String metodeBayar;   // SIMPANAN atau TRANSFER
+        private String buktiBayar;    // path foto jika TRANSFER
+        private String jenisSimpanan; // SUKARELA / WAJIB / POKOK jika SIMPANAN
         private String keterangan;
     }
 

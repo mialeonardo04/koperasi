@@ -136,16 +136,16 @@ public class TelegramService {
             log.debug("[Telegram] Chat ID kosong, skip kirim notifikasi");
             return;
         }
-        if (botToken == null || botToken.isBlank() || botToken.equals("GANTI_DENGAN_BOT_TOKEN")) {
+        if (botToken == null || botToken.isBlank() || botToken.startsWith("GANTI") || botToken.startsWith("ISIAN")) {
             log.warn("[Telegram] Bot token belum dikonfigurasi");
             return;
         }
 
-        Map<String, Object> payload = Map.of(
-                "chat_id",    chatId,
-                "text",       text,
-                "parse_mode", "MarkdownV2"
-        );
+        // Deteksi apakah pesan pakai MarkdownV2 (ada karakter * atau `)
+        boolean useMarkdown = text.contains("*") || text.contains("`") || text.contains("\\.");
+        Map<String, Object> payload = useMarkdown
+                ? Map.of("chat_id", chatId, "text", text, "parse_mode", "MarkdownV2")
+                : Map.of("chat_id", chatId, "text", text);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

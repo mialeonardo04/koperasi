@@ -180,8 +180,10 @@ public class AdminController {
     }
 
     @GetMapping("/report/rekap-simpanan")
-    public ResponseEntity<ApiResponse<List<ReportDto.RekapSimpanan>>> getRekapSimpanan() {
-        return ResponseEntity.ok(ApiResponse.ok(reportService.getRekapSimpananAllMember()));
+    public ResponseEntity<ApiResponse<List<ReportDto.RekapSimpanan>>> getRekapSimpanan(
+            @RequestParam(defaultValue = "0") int bulan,
+            @RequestParam(defaultValue = "0") int tahun) {
+        return ResponseEntity.ok(ApiResponse.ok(reportService.getRekapSimpananAllMember(bulan, tahun)));
     }
 
     @GetMapping("/report/rekap-pinjaman")

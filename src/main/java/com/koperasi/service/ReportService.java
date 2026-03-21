@@ -92,21 +92,30 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public List<ReportDto.RekapSimpanan> getRekapSimpananAllMember() {
+        return getRekapSimpananAllMember(0, 0);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReportDto.RekapSimpanan> getRekapSimpananAllMember(int bulan, int tahun) {
         return userRepository.findAllMembers(Pageable.unpaged())
                 .stream()
                 .map(user -> {
-                    BigDecimal pokok    = simpananRepository.getSaldoByUserAndJenis(user.getId(), Simpanan.JenisSimpanan.POKOK);
-                    BigDecimal wajib    = simpananRepository.getSaldoByUserAndJenis(user.getId(), Simpanan.JenisSimpanan.WAJIB);
-                    BigDecimal sukarela = simpananRepository.getSaldoByUserAndJenis(user.getId(), Simpanan.JenisSimpanan.SUKARELA);
+                    BigDecimal pokok    = simpananRepository.getSaldoByUserAndJenisPeriode(user.getId(), Simpanan.JenisSimpanan.POKOK,    bulan, tahun);
+                    BigDecimal wajib    = simpananRepository.getSaldoByUserAndJenisPeriode(user.getId(), Simpanan.JenisSimpanan.WAJIB,    bulan, tahun);
+                    BigDecimal sukarela = simpananRepository.getSaldoByUserAndJenisPeriode(user.getId(), Simpanan.JenisSimpanan.SUKARELA, bulan, tahun);
+                    BigDecimal total    = pokok.add(wajib).add(sukarela);
+                    // Skip anggota dengan total 0 jika ada filter periode
+                    if ((bulan != 0 || tahun != 0) && total.compareTo(BigDecimal.ZERO) == 0) return null;
                     return ReportDto.RekapSimpanan.builder()
                             .nomorAnggota(user.getNomorAnggota())
                             .namaAnggota(user.getNamaLengkap())
                             .simpananPokok(pokok)
                             .simpananWajib(wajib)
                             .simpananSukarela(sukarela)
-                            .total(pokok.add(wajib).add(sukarela))
+                            .total(total)
                             .build();
                 })
+                .filter(r -> r != null)
                 .collect(Collectors.toList());
     }
 

@@ -57,4 +57,18 @@ public interface SimpananRepository extends JpaRepository<Simpanan, Long> {
 
     @Query("SELECT COALESCE(SUM(s.jumlah), 0) FROM Simpanan s WHERE s.tipe = 'TARIK'")
     BigDecimal getTotalPenarikanSemua();
+
+    /** Saldo per user per jenis dengan filter bulan/tahun opsional */
+    @Query("""
+        SELECT COALESCE(SUM(CASE WHEN s.tipe = 'SETOR' THEN s.jumlah ELSE -s.jumlah END), 0)
+        FROM Simpanan s
+        WHERE s.user.id = :userId AND s.jenis = :jenis
+        AND (:bulan = 0 OR EXTRACT(MONTH FROM s.tanggalTransaksi) = :bulan)
+        AND (:tahun = 0 OR EXTRACT(YEAR  FROM s.tanggalTransaksi) = :tahun)
+        """)
+    BigDecimal getSaldoByUserAndJenisPeriode(
+            @Param("userId") Long userId,
+            @Param("jenis") Simpanan.JenisSimpanan jenis,
+            @Param("bulan") int bulan,
+            @Param("tahun") int tahun);
 }

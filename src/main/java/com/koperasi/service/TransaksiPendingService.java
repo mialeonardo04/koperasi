@@ -25,16 +25,16 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TransaksiPendingService {
 
-    private final TransaksiPendingRepository pendingRepo;
-    private final TelegramService            telegramService;
-    private final KelompokService            kelompokService;
+    private final TransaksiPendingRepository  pendingRepo;
+    private final TelegramService             telegramService;
+    private final KelompokService             kelompokService;
+    private final SimpananRepository          simpananRepository;
+    private final UserRepository              userRepository;
+    private final AngsuranPinjamanRepository  angsuranRepository;
+    private final PinjamanRepository          pinjamanRepository;
 
     @Value("${app.telegram.admin-chat-id:}")
     private String adminChatId;
-    private final UserRepository userRepository;
-    private final SimpananRepository simpananRepository;
-    private final AngsuranPinjamanRepository angsuranRepository;
-    private final PinjamanRepository pinjamanRepository;
 
     // ─────────────────────────────────────────────────────────
     // MEMBER: Ajukan transaksi
@@ -191,6 +191,12 @@ public class TransaksiPendingService {
         pending.setCatatanAdmin(request.getCatatanAdmin());
 
         if (request.getDisetujui()) {
+            // Validasi saldo simpanan sebelum approve BAYAR_ANGSURAN_KELOMPOK via SIMPANAN
+            if (pending.getJenisTransaksi() == TransaksiPending.JenisTransaksi.BAYAR_ANGSURAN_KELOMPOK
+                    && pending.getMetodeBayar() == com.koperasi.entity.AngsuranKelompok.MetodeBayar.SIMPANAN) {
+                validasiSaldoSimpananCukup(pending);
+            }
+
             switch (pending.getJenisTransaksi()) {
                 case SETOR_SIMPANAN         -> eksekusiSetor(pending);
                 case TARIK_SIMPANAN         -> eksekusiTarik(pending);
@@ -317,6 +323,30 @@ public class TransaksiPendingService {
                 + "Jumlah   : Rp " + formatRupiah(jumlah) + "\n\n"
                 + "Silakan buka halaman Pengajuan untuk memprosesnya.";
         telegramService.send(adminChatId, pesan);
+    }
+
+    private void validasiSaldoSimpananCukup(TransaksiPending pending) {
+        // Parse jenis simpanan dari keterangan
+        Simpanan.JenisSimpanan jenis = Simpanan.JenisSimpanan.SUKARELA;
+        String ket = pending.getKeterangan();
+        if (ket != null) {
+            if (ket.contains("WAJIB"))   jenis = Simpanan.JenisSimpanan.WAJIB;
+            else if (ket.contains("POKOK")) jenis = Simpanan.JenisSimpanan.POKOK;
+        }
+
+        java.math.BigDecimal saldo = simpananRepository.getSaldoByUserAndJenis(
+                pending.getUser().getId(), jenis);
+        java.math.BigDecimal dibutuhkan = pending.getJumlah();
+
+        if (saldo.compareTo(dibutuhkan) < 0) {
+            throw new IllegalStateException(
+                    "Saldo simpanan " + jenis.name() + " anggota " +
+                            pending.getUser().getNamaLengkap() + " tidak mencukupi. " +
+                            "Saldo: Rp " + formatRupiah(saldo) + ", " +
+                            "dibutuhkan: Rp " + formatRupiah(dibutuhkan) + ". " +
+                            "Tolak pengajuan ini atau minta member mengubah metode pembayaran."
+            );
+        }
     }
 
     private String jenisLabel(TransaksiPending.JenisTransaksi jenis) {
