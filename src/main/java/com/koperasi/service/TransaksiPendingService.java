@@ -4,6 +4,7 @@ import com.koperasi.dto.TransaksiPendingDto;
 import com.koperasi.entity.*;
 import com.koperasi.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -175,6 +176,7 @@ public class TransaksiPendingService {
     }
 
     @Transactional
+    @CacheEvict(value = {"dashboard-admin", "rekap-simpanan"}, allEntries = true)
     public TransaksiPendingDto.TransaksiPendingResponse prosesApproval(
             Long pendingId, Long adminId, TransaksiPendingDto.ApprovalRequest request) {
 

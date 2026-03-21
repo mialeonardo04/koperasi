@@ -12,7 +12,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +28,7 @@ public class ReportService {
     private final PinjamanKelompokRepository pinjamanKelompokRepository;
     private final KelompokAnggotaRepository  kelompokAnggotaRepository;
 
+    @Cacheable(value = "dashboard-admin", unless = "#result == null")
     @Transactional(readOnly = true)
     public ReportDto.DashboardAdmin getDashboardAdmin() {
         long totalAnggota = userRepository.count();
@@ -114,6 +118,7 @@ public class ReportService {
                 .build();
     }
 
+    @Cacheable(value = "rekap-simpanan", key = "'all'", unless = "#result == null || #result.isEmpty()")
     @Transactional(readOnly = true)
     public List<ReportDto.RekapSimpanan> getRekapSimpananAllMember() {
         return getRekapSimpananAllMember(0, 0);
@@ -121,18 +126,18 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public List<ReportDto.RekapSimpanan> getRekapSimpananAllMember(int bulan, int tahun) {
-        return userRepository.findAllMembers(Pageable.unpaged())
-                .stream()
-                .map(user -> {
-                    BigDecimal pokok    = simpananRepository.getSaldoByUserAndJenisPeriode(user.getId(), Simpanan.JenisSimpanan.POKOK,    bulan, tahun);
-                    BigDecimal wajib    = simpananRepository.getSaldoByUserAndJenisPeriode(user.getId(), Simpanan.JenisSimpanan.WAJIB,    bulan, tahun);
-                    BigDecimal sukarela = simpananRepository.getSaldoByUserAndJenisPeriode(user.getId(), Simpanan.JenisSimpanan.SUKARELA, bulan, tahun);
+        // Single query - ambil semua saldo sekaligus, bukan N query per user
+        List<Object[]> rows = simpananRepository.getRekapSaldoAllMember(bulan, tahun);
+        return rows.stream()
+                .map(r -> {
+                    BigDecimal pokok    = r[2] != null ? (BigDecimal) r[2] : BigDecimal.ZERO;
+                    BigDecimal wajib    = r[3] != null ? (BigDecimal) r[3] : BigDecimal.ZERO;
+                    BigDecimal sukarela = r[4] != null ? (BigDecimal) r[4] : BigDecimal.ZERO;
                     BigDecimal total    = pokok.add(wajib).add(sukarela);
-                    // Skip anggota dengan total 0 jika ada filter periode
                     if ((bulan != 0 || tahun != 0) && total.compareTo(BigDecimal.ZERO) == 0) return null;
                     return ReportDto.RekapSimpanan.builder()
-                            .nomorAnggota(user.getNomorAnggota())
-                            .namaAnggota(user.getNamaLengkap())
+                            .nomorAnggota((String) r[0])
+                            .namaAnggota((String) r[1])
                             .simpananPokok(pokok)
                             .simpananWajib(wajib)
                             .simpananSukarela(sukarela)

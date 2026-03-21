@@ -5,6 +5,8 @@ import com.koperasi.entity.*;
 import com.koperasi.repository.PencairanKelompokRepository;
 import com.koperasi.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -79,6 +81,7 @@ public class KelompokService {
     }
 
     @Transactional
+    @CacheEvict(value = {"member-bebas", "dashboard-admin"}, allEntries = true)
     public KelompokDto.KelompokResponse tambahAnggota(Long kelompokId, Long leaderId, KelompokDto.TambahAnggotaRequest req) {
         Kelompok kelompok = getKelompok(kelompokId);
 
@@ -603,16 +606,10 @@ public class KelompokService {
      * Member yang kelompoknya sudah TERMINATED tetap muncul di sini.
      */
     @Transactional(readOnly = true)
+    @Cacheable(value = "member-bebas")
     public List<com.koperasi.dto.AuthDto.UserInfo> getMemberBebasKelompok() {
-        // Query langsung — ambil ID user yang terikat kelompok AKTIF
-        List<Long> terikatIds = anggotaRepo.findUserIdsTerikatKelompokAktif();
-
-        // Ambil semua member lalu filter yang tidak terikat
-        return userRepo.findAll().stream()
-                .filter(u -> u.getRole() == com.koperasi.entity.User.Role.MEMBER)
-                .filter(u -> u.getStatus() == com.koperasi.entity.User.StatusAnggota.AKTIF)
-                .filter(u -> !terikatIds.contains(u.getId()))
-                .sorted(java.util.Comparator.comparing(u -> u.getNomorAnggota()))
+        // Single query - langsung filter di database
+        return userRepo.findMemberBebasKelompokAktif().stream()
                 .map(u -> com.koperasi.dto.AuthDto.UserInfo.builder()
                         .id(u.getId())
                         .namaLengkap(u.getNamaLengkap())

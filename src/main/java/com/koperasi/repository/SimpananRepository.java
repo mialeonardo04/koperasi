@@ -58,6 +58,27 @@ public interface SimpananRepository extends JpaRepository<Simpanan, Long> {
     @Query("SELECT COALESCE(SUM(s.jumlah), 0) FROM Simpanan s WHERE s.tipe = 'TARIK'")
     BigDecimal getTotalPenarikanSemua();
 
+    /**
+     * OPTIMASI: Ambil rekap saldo semua member dalam 1 query
+     * Menggantikan N query (3 per user x jumlah member)
+     */
+    @Query("""
+        SELECT u.nomorAnggota, u.namaLengkap,
+               COALESCE(SUM(CASE WHEN s.jenis = 'POKOK'    AND s.tipe = 'SETOR' THEN s.jumlah
+                                 WHEN s.jenis = 'POKOK'    AND s.tipe = 'TARIK' THEN -s.jumlah ELSE 0 END), 0),
+               COALESCE(SUM(CASE WHEN s.jenis = 'WAJIB'    AND s.tipe = 'SETOR' THEN s.jumlah
+                                 WHEN s.jenis = 'WAJIB'    AND s.tipe = 'TARIK' THEN -s.jumlah ELSE 0 END), 0),
+               COALESCE(SUM(CASE WHEN s.jenis = 'SUKARELA' AND s.tipe = 'SETOR' THEN s.jumlah
+                                 WHEN s.jenis = 'SUKARELA' AND s.tipe = 'TARIK' THEN -s.jumlah ELSE 0 END), 0)
+        FROM User u LEFT JOIN Simpanan s ON s.user.id = u.id
+            AND (:bulan = 0 OR EXTRACT(MONTH FROM s.tanggalTransaksi) = :bulan)
+            AND (:tahun = 0  OR EXTRACT(YEAR  FROM s.tanggalTransaksi) = :tahun)
+        WHERE u.role = 'MEMBER'
+        GROUP BY u.id, u.nomorAnggota, u.namaLengkap
+        ORDER BY u.nomorAnggota
+        """)
+    List<Object[]> getRekapSaldoAllMember(@Param("bulan") int bulan, @Param("tahun") int tahun);
+
     /** Saldo per user per jenis dengan filter bulan/tahun opsional */
     @Query("""
         SELECT COALESCE(SUM(CASE WHEN s.tipe = 'SETOR' THEN s.jumlah ELSE -s.jumlah END), 0)

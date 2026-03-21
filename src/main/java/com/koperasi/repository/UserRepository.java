@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -30,4 +31,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
                     "LOWER(nomor_anggota) LIKE LOWER(CONCAT('%', :search, '%')))",
             nativeQuery = true)
     Page<User> findAllMembersBySearch(@Param("search") String search, Pageable pageable);
+    /**
+     * OPTIMASI: Ambil member yang tidak terikat kelompok AKTIF dalam 1 query
+     * Menggantikan findAll() + filter di Java
+     */
+    @Query("""
+        SELECT u FROM User u
+        WHERE u.role = 'MEMBER' AND u.status = 'AKTIF'
+        AND u.id NOT IN (
+            SELECT ka.user.id FROM KelompokAnggota ka
+            WHERE ka.kelompok.status = 'AKTIF'
+        )
+        ORDER BY u.nomorAnggota
+        """)
+    List<User> findMemberBebasKelompokAktif();
 }
