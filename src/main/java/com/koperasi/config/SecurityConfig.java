@@ -70,7 +70,9 @@ public class SecurityConfig {
                 "http://127.0.0.1:*",
                 "http://192.168.*.*:*",
                 "http://10.*.*.*:*",
-                "http://172.16.*.*:*"
+                "http://172.16.*.*:*",
+                "https://koperasi-leyangan.web.id",
+                "https://www.koperasi-leyangan.web.id"
         ));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
