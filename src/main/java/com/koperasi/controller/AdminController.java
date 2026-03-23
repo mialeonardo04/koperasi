@@ -15,9 +15,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 
 @RestController
 @RequestMapping("/admin")
@@ -222,5 +219,43 @@ public class AdminController {
             @Valid @RequestBody KelompokDto.KirimTeguranRequest req) {
         return ResponseEntity.ok(ApiResponse.ok("Teguran berhasil dikirim",
                 kelompokService.kirimTeguran(admin.getId(), id, req)));
+    }
+
+    // ── Admin Kelola Kelompok ─────────────────────────────────────────────
+
+    /** Admin buat kelompok atas nama member (sebagai leader) */
+    @PostMapping("/kelompok")
+    public ResponseEntity<ApiResponse<KelompokDto.KelompokResponse>> adminBuatKelompok(
+            @Valid @RequestBody KelompokDto.AdminBuatKelompokRequest req) {
+        return ResponseEntity.ok(ApiResponse.ok("Kelompok berhasil dibuat",
+                kelompokService.buatKelompokAsUser(req.getLeaderId(), req)));
+    }
+
+    /** Admin tambah anggota ke kelompok mana saja */
+    @PostMapping("/kelompok/{id}/anggota")
+    public ResponseEntity<ApiResponse<KelompokDto.KelompokResponse>> adminTambahAnggota(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User admin,
+            @Valid @RequestBody KelompokDto.TambahAnggotaRequest req) {
+        return ResponseEntity.ok(ApiResponse.ok("Anggota berhasil ditambahkan",
+                kelompokService.tambahAnggota(id, admin.getId(), req)));
+    }
+
+    /** Admin ganti leader kelompok */
+    @PutMapping("/kelompok/{id}/leader")
+    public ResponseEntity<ApiResponse<KelompokDto.KelompokResponse>> adminGantiLeader(
+            @PathVariable Long id,
+            @RequestBody KelompokDto.GantiLeaderRequest req) {
+        return ResponseEntity.ok(ApiResponse.ok("Leader berhasil diganti",
+                kelompokService.gantiLeader(id, req.getNewLeaderId())));
+    }
+
+    /** Admin bubarkan kelompok */
+    @DeleteMapping("/kelompok/{id}")
+    public ResponseEntity<ApiResponse<KelompokDto.KelompokResponse>> adminBubarkanKelompok(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User admin) {
+        return ResponseEntity.ok(ApiResponse.ok("Kelompok berhasil dibubarkan",
+                kelompokService.bubarkanKelompok(id, admin.getId())));
     }
 }

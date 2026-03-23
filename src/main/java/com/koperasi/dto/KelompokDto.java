@@ -166,4 +166,27 @@ public class KelompokDto {
         private String pesan;
         private LocalDateTime sentAt;
     }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AdminBuatKelompokRequest {
+        @NotBlank(message = "Nama kelompok wajib diisi")
+        private String namaKelompok;
+        @NotNull(message = "Leader wajib dipilih")
+        private Long leaderId;
+        private String deskripsi;
+
+        // Agar bisa dipakai sebagai BuatKelompokRequest
+        public String getNamaKelompok() { return namaKelompok; }
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class GantiLeaderRequest {
+        @NotNull(message = "Leader baru wajib dipilih")
+        private Long newLeaderId;
+    }
 }

@@ -518,8 +518,8 @@ Authorization: Bearer <token_admin>
 
 ## Akun Default
 
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin@koperasi.id | admin123 |
+| Role | Email | Password  |
+|------|-------|-----------|
+| Admin | admin@koperasi.id | xxxxxxxx  |
 | Member | member@koperasi.id | member123 |
 | Member | siti@koperasi.id | member123 |

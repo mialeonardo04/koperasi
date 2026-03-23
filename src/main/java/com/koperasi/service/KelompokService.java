@@ -50,10 +50,23 @@ public class KelompokService {
 
     @Transactional
     public KelompokDto.KelompokResponse buatKelompok(Long userId, KelompokDto.BuatKelompokRequest req) {
-        User user = getUser(userId);
+        return buatKelompokInternal(userId, req);
+    }
+
+    /** Admin buat kelompok atas nama member tertentu sebagai leader */
+    public KelompokDto.KelompokResponse buatKelompokAsUser(Long leaderId, KelompokDto.AdminBuatKelompokRequest req) {
+        KelompokDto.BuatKelompokRequest wrapped = new KelompokDto.BuatKelompokRequest();
+        wrapped.setNamaKelompok(req.getNamaKelompok());
+        wrapped.setDeskripsi(req.getDeskripsi());
+        return buatKelompok(leaderId, wrapped);
+    }
+
+    /** Internal - buat kelompok dengan request standar */
+    public KelompokDto.KelompokResponse buatKelompokInternal(Long leaderId, KelompokDto.BuatKelompokRequest req) {
+        User user = getUser(leaderId);
 
         // Cek user sudah di kelompok aktif
-        anggotaRepo.findActiveKelompokByUserId(userId).ifPresent(ka -> {
+        anggotaRepo.findActiveKelompokByUserId(leaderId).ifPresent(ka -> {
             throw new IllegalStateException(
                     "Anda sudah tergabung dalam kelompok aktif: " + ka.getKelompok().getNamaKelompok() +
                             ". Selesaikan pinjaman terlebih dahulu sebelum membuat kelompok baru.");
@@ -76,7 +89,7 @@ public class KelompokService {
                 .build();
         anggotaRepo.save(ka);
 
-        log.info("Kelompok {} dibuat oleh user {}", kode, userId);
+        log.info("Kelompok {} dibuat oleh user {}", kode, leaderId);
         return mapToResponse(kelompok, false);
     }
 
@@ -85,8 +98,10 @@ public class KelompokService {
     public KelompokDto.KelompokResponse tambahAnggota(Long kelompokId, Long leaderId, KelompokDto.TambahAnggotaRequest req) {
         Kelompok kelompok = getKelompok(kelompokId);
 
-        // Hanya leader yang bisa tambah anggota
-        if (!kelompok.getLeader().getId().equals(leaderId)) {
+        // Hanya leader atau admin yang bisa tambah anggota
+        User actor = getUser(leaderId);
+        boolean isAdmin = actor.getRole() == User.Role.ADMIN;
+        if (!isAdmin && !kelompok.getLeader().getId().equals(leaderId)) {
             throw new IllegalStateException("Hanya leader yang bisa menambahkan anggota");
         }
 
@@ -136,7 +151,27 @@ public class KelompokService {
         return mapToResponse(kelompok, true);
     }
 
+    /** Admin ganti leader kelompok */
     @Transactional
+    @CacheEvict(value = {"member-bebas", "dashboard-admin"}, allEntries = true)
+    public KelompokDto.KelompokResponse gantiLeader(Long kelompokId, Long newLeaderId) {
+        Kelompok kelompok = getKelompok(kelompokId);
+        User newLeader = getUser(newLeaderId);
+
+        boolean isAnggota = kelompok.getAnggotaList().stream()
+                .anyMatch(ka -> ka.getUser().getId().equals(newLeaderId));
+        if (!isAnggota) {
+            throw new IllegalStateException("User bukan anggota kelompok ini");
+        }
+
+        kelompok.setLeader(newLeader);
+        kelompokRepo.save(kelompok);
+        log.info("[Admin] Leader kelompok {} diganti ke {}", kelompok.getNamaKelompok(), newLeader.getNamaLengkap());
+        return mapToResponse(kelompok, true);
+    }
+
+    @Transactional
+    @CacheEvict(value = {"member-bebas", "dashboard-admin"}, allEntries = true)
     public KelompokDto.KelompokResponse bubarkanKelompok(Long kelompokId, Long leaderId) {
         Kelompok kelompok = getKelompok(kelompokId);
 
