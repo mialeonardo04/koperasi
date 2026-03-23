@@ -22,6 +22,18 @@ public interface AngsuranKelompokRepository extends JpaRepository<AngsuranKelomp
         """)
     List<AngsuranKelompok> findTerlambat(@Param("today") LocalDate today);
 
+    // Angsuran yang jatuh tempo dalam N hari ke depan (untuk notif reminder)
+    @Query("""
+        SELECT a FROM AngsuranKelompok a
+        JOIN FETCH a.pinjamanKelompok p
+        JOIN FETCH p.kelompok k
+        JOIN FETCH k.anggotaList ka
+        JOIN FETCH ka.user u
+        WHERE a.status = 'BELUM_BAYAR'
+        AND a.tanggalJatuhTempo = :targetDate
+        """)
+    List<AngsuranKelompok> findJatuhTempoOnDate(@Param("targetDate") LocalDate targetDate);
+
     // Cek ada pending bayar untuk angsuran ini
     @Query("""
         SELECT COUNT(t) FROM TransaksiPending t

@@ -790,6 +790,46 @@ public class KelompokService {
         return NumberFormat.getNumberInstance(new Locale("id","ID")).format(v);
     }
 
+    /**
+     * Kirim reminder ke semua anggota kelompok yang angsurannya jatuh tempo dalam H hari
+     */
+    @Transactional(readOnly = true)
+    public void kirimReminderJatuhTempo(int hariSebelum) {
+        LocalDate targetDate = LocalDate.now().plusDays(hariSebelum);
+        List<AngsuranKelompok> angsuranList = angsuranRepo.findJatuhTempoOnDate(targetDate);
+
+        for (AngsuranKelompok angsuran : angsuranList) {
+            PinjamanKelompok pinjaman = angsuran.getPinjamanKelompok();
+            Kelompok kelompok = pinjaman.getKelompok();
+
+            String pesanAdmin = "Reminder angsuran jatuh tempo H-" + hariSebelum + "!" + "\n\n"
+                    + "Kelompok  : " + kelompok.getNamaKelompok() + "\n"
+                    + "Angsuran  : Ke-" + angsuran.getPeriodeKe() + "\n"
+                    + "Jumlah    : Rp " + formatRupiah(angsuran.getJumlahAngsuran()) + "\n"
+                    + "Jatuh tempo: " + targetDate;
+            telegramService.send(adminChatId, pesanAdmin);
+
+            // Notif ke semua anggota kelompok
+            for (KelompokAnggota ka : kelompok.getAnggotaList()) {
+                String chatId = ka.getUser().getTelegramChatId();
+                if (chatId == null || chatId.isBlank()) continue;
+
+                String pesan = "Reminder Angsuran Kelompok!" + "\n\n"
+                        + "Halo " + ka.getUser().getNamaLengkap() + "," + "\n"
+                        + "Angsuran kelompok " + kelompok.getNamaKelompok() + " akan jatuh tempo dalam " + hariSebelum + " hari." + "\n\n"
+                        + "Detail Angsuran:" + "\n"
+                        + "Ke-      : " + angsuran.getPeriodeKe() + "\n"
+                        + "Jumlah   : Rp " + formatRupiah(angsuran.getJumlahAngsuran()) + "\n"
+                        + "Jatuh tempo: " + targetDate + "\n\n"
+                        + "Segera lakukan pembayaran melalui aplikasi Koperasi Leyangan.";
+                telegramService.send(chatId, pesan);
+            }
+            log.info("[Reminder H-{}] Kelompok {} angsuran ke-{}", hariSebelum,
+                    kelompok.getNamaKelompok(), angsuran.getPeriodeKe());
+        }
+        log.info("[Reminder H-{}] Selesai - {} angsuran diproses", hariSebelum, angsuranList.size());
+    }
+
     private String escMd(String text) {
         if (text == null) return "";
         return text.replaceAll("([_*\\[\\]()~`>#+\\-=|{}.!])", "\\\\$1");
