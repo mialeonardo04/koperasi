@@ -2,7 +2,10 @@ package com.koperasi.controller;
 
 import com.koperasi.dto.*;
 import com.koperasi.dto.KelompokDto;
+import com.koperasi.dto.AuditLogDto;
+import com.koperasi.entity.AuditLog;
 import com.koperasi.entity.User;
+import com.koperasi.repository.AuditLogRepository;
 import com.koperasi.service.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +31,31 @@ public class AdminController {
     private final ReportService reportService;
     private final TransaksiPendingService transaksiPendingService;
     private final KelompokService kelompokService;
+    private final AuditLogRepository auditLogRepository;
+
+    // ========== AUDIT LOGS ==========
+
+    @GetMapping("/audit-logs")
+    public ResponseEntity<ApiResponse<Page<AuditLogDto>>> getAuditLogs(
+            @PageableDefault(size = 50) Pageable pageable) {
+        Page<AuditLogDto> logs = auditLogRepository.findAllWithUser(pageable)
+                .map(log -> AuditLogDto.builder()
+                        .id(log.getId())
+                        .action(log.getAction())
+                        .entityName(log.getEntityName())
+                        .entityId(log.getEntityId())
+                        .oldValue(log.getOldValue())
+                        .newValue(log.getNewValue())
+                        .ipAddress(log.getIpAddress())
+                        .userAgent(log.getUserAgent())
+                        .createdAt(log.getCreatedAt())
+                        .user(log.getUser() != null ? AuditLogDto.UserInfo.builder()
+                                .namaLengkap(log.getUser().getNamaLengkap())
+                                .email(log.getUser().getEmail())
+                                .build() : null)
+                        .build());
+        return ResponseEntity.ok(ApiResponse.ok(logs));
+    }
 
     // ========== MEMBER MANAGEMENT ==========
 
@@ -129,9 +157,11 @@ public class AdminController {
 
     @PutMapping("/pinjaman/{id}/proses")
     public ResponseEntity<ApiResponse<PinjamanDto.PinjamanResponse>> prosesPinjaman(
-            @PathVariable Long id, @Valid @RequestBody PinjamanDto.ApprovalRequest request) {
+            @PathVariable Long id,
+            @AuthenticationPrincipal User admin,
+            @Valid @RequestBody PinjamanDto.ApprovalRequest request) {
         return ResponseEntity.ok(ApiResponse.ok("Pinjaman berhasil diproses",
-                pinjamanService.prosesPersetujuan(id, request)));
+                pinjamanService.prosesPersetujuan(id, admin, request)));
     }
 
     @GetMapping("/pinjaman/{id}/jadwal-angsuran")

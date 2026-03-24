@@ -23,6 +23,7 @@ public class UserManagementService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final TelegramService  telegramService;
+    private final AuditLogService   auditLogService;
 
     @Value("${app.telegram.admin-chat-id:}")
     private String adminChatId;
@@ -45,8 +46,21 @@ public class UserManagementService {
     public AuthDto.UserInfo updateStatusMember(Long id, User.StatusAnggota status) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Member tidak ditemukan"));
+        String statusLama = user.getStatus().name();
         user.setStatus(status);
-        return mapToUserInfo(userRepository.save(user));
+        user = userRepository.save(user);
+
+        // Audit Log
+        auditLogService.log(
+                null,
+                "UPDATE_USER_STATUS",
+                "users",
+                user.getId().toString(),
+                String.format("status: %s", statusLama),
+                String.format("status: %s", status.name())
+        );
+
+        return mapToUserInfo(user);
     }
 
     @Transactional
@@ -87,6 +101,16 @@ public class UserManagementService {
         user = userRepository.save(user);
         log.info("Admin membuat user baru: {} - {} (role: {})",
                 nomorAnggota, request.getNamaLengkap(), request.getRole());
+
+        // Audit Log
+        auditLogService.log(
+                null,
+                "CREATE_USER",
+                "users",
+                user.getId().toString(),
+                null,
+                String.format("email: %s, role: %s", user.getEmail(), user.getRole().name())
+        );
 
         // Notif selamat datang ke user baru via Telegram
         kirimNotifSelamatDatang(request.getTelegramChatId(),

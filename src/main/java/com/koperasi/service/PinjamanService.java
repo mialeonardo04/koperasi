@@ -34,6 +34,7 @@ public class PinjamanService {
     private final AngsuranPinjamanRepository angsuranRepository;
     private final UserRepository             userRepository;
     private final TelegramService            telegramService;
+    private final AuditLogService           auditLogService;
 
     @Value("${app.telegram.admin-chat-id:}")
     private String adminChatId;
@@ -82,7 +83,7 @@ public class PinjamanService {
     }
 
     @Transactional
-    public PinjamanDto.PinjamanResponse prosesPersetujuan(Long pinjamanId, PinjamanDto.ApprovalRequest request) {
+    public PinjamanDto.PinjamanResponse prosesPersetujuan(Long pinjamanId, User admin, PinjamanDto.ApprovalRequest request) {
         Pinjaman pinjaman = pinjamanRepository.findById(pinjamanId)
                 .orElseThrow(() -> new IllegalArgumentException("Pinjaman tidak ditemukan"));
 
@@ -90,6 +91,7 @@ public class PinjamanService {
             throw new IllegalStateException("Pinjaman sudah diproses sebelumnya");
         }
 
+        String statusSebelumnya = pinjaman.getStatus().name();
         // Ambil user secara eksplisit selagi sesi masih terbuka
         User user = getUser(pinjaman.getUser().getId());
 
@@ -136,6 +138,17 @@ public class PinjamanService {
         }
 
         pinjaman = pinjamanRepository.save(pinjaman);
+
+        // Audit Log
+        auditLogService.log(
+                admin,
+                request.getDisetujui() ? "APPROVE_LOAN" : "REJECT_LOAN",
+                "pinjaman",
+                pinjaman.getId().toString(),
+                String.format("status: %s", statusSebelumnya),
+                String.format("status: %s, admin_ket: %s", pinjaman.getStatus().name(), request.getKeteranganAdmin())
+        );
+
         return mapToResponse(pinjaman, user, true);
     }
 

@@ -28,6 +28,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
+    private final AuditLogService auditLogService;
 
     private static final AtomicLong memberCounter = new AtomicLong(0);
 
@@ -39,6 +40,9 @@ public class AuthService {
 
             User user = (User) auth.getPrincipal();
             String token = jwtUtil.generateToken(user);
+
+            // Audit Log Login
+            auditLogService.log(user, "LOGIN", "users", user.getId().toString(), null, "User login berhasil");
 
             return AuthDto.LoginResponse.builder()
                     .accessToken(token)
@@ -74,6 +78,10 @@ public class AuthService {
 
         user = userRepository.save(user);
         log.info("Member baru terdaftar: {} - {}", nomorAnggota, request.getNamaLengkap());
+
+        // Audit Log Register
+        auditLogService.log(user, "REGISTER", "users", user.getId().toString(), null, "Member baru terdaftar mandiri");
+
         return mapToUserInfo(user);
     }
 
@@ -88,6 +96,9 @@ public class AuthService {
 
         user.setPassword(passwordEncoder.encode(request.getPasswordBaru()));
         userRepository.save(user);
+
+        // Audit Log
+        auditLogService.log(user, "CHANGE_PASSWORD", "users", user.getId().toString(), null, "Password diperbarui");
     }
 
     public AuthDto.UserInfo getProfile(String email) {

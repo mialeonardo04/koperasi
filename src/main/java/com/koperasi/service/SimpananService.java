@@ -23,6 +23,7 @@ public class SimpananService {
 
     private final SimpananRepository simpananRepository;
     private final UserRepository userRepository;
+    private final AuditLogService auditLogService;
 
     @Transactional
     public SimpananDto.SimpananResponse setor(Long userId, SimpananDto.SetorRequest request) {
@@ -44,6 +45,17 @@ public class SimpananService {
         userRepository.save(user);
 
         log.info("Setor simpanan {} - {} oleh user {}", request.getJenis(), request.getJumlah(), userId);
+
+        // Audit Log
+        auditLogService.log(
+                null,
+                "DEPOSIT",
+                "simpanan",
+                simpanan.getId().toString(),
+                null,
+                String.format("jenis: %s, jumlah: %s, target_user: %s", simpanan.getJenis(), simpanan.getJumlah(), user.getEmail())
+        );
+
         return mapToResponse(simpanan, user);
     }
 
@@ -77,6 +89,17 @@ public class SimpananService {
         userRepository.save(user);
 
         log.info("Tarik simpanan {} - {} oleh user {}", request.getJenis(), request.getJumlah(), userId);
+
+        // Audit Log
+        auditLogService.log(
+                null,
+                "WITHDRAW",
+                "simpanan",
+                simpanan.getId().toString(),
+                null,
+                String.format("jenis: %s, jumlah: %s, target_user: %s", simpanan.getJenis(), simpanan.getJumlah(), user.getEmail())
+        );
+
         return mapToResponse(simpanan, user);
     }
 
