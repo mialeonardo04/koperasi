@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: koperasi-be
+  namespace: koperasi-dev
+data:
+  application.properties: |
+    # ============================================================
+    # Koperasi Leyangan - application.properties (Kubernetes)
+    # Nilai rahasia dibaca dari Secret "koperasi-secret"
+    # lewat environment variable (tanpa nilai default).
+    # ============================================================
+
+    # -- Aplikasi
+    spring.application.name=koperasi-app
+
+    # -- CORS (sesuaikan dengan alamat frontend)
+    app.cors.allowed-origins=http://localhost:3000,http://localhost:5173
+
+    # -- Database PostgreSQL (di Windows, lewat jaringan host-only)
+    spring.datasource.url=jdbc:postgresql://192.168.78.1:5516/koperasi
+    spring.datasource.username=koperasi
+    spring.datasource.password=${DB_PASSWORD}
+    spring.datasource.driver-class-name=org.postgresql.Driver
+
+    # -- JPA / Hibernate
+    spring.jpa.hibernate.ddl-auto=validate
+    spring.jpa.show-sql=false
+    spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+    spring.jpa.properties.hibernate.format_sql=true
+    spring.jpa.open-in-view=false
+
+    # -- Flyway
+    spring.flyway.enabled=true
+    spring.flyway.locations=classpath:db/migration
+    spring.flyway.baseline-on-migrate=true
+    spring.flyway.baseline-version=0
+    spring.flyway.validate-on-migrate=true
+    spring.flyway.out-of-order=false
+
+    # -- Server
+    server.port=8080
+    server.address=0.0.0.0
+    server.servlet.context-path=/api
+    server.forward-headers-strategy=framework
+    app.base-url=http://192.168.78.11:30080
+
+    # -- OpenAPI / Swagger
+    springdoc.api-docs.path=/v3/api-docs
+    springdoc.swagger-ui.path=/swagger-ui.html
+    springdoc.swagger-ui.operations-sorter=alpha
+    springdoc.swagger-ui.tags-sorter=alpha
+    springdoc.show-actuator=true
+
+    # -- File Upload
+    spring.servlet.multipart.enabled=true
+    spring.servlet.multipart.max-file-size=2MB
+    spring.servlet.multipart.max-request-size=2MB
+
+    # -- JWT
+    app.jwt.secret=${JWT_SECRET}
+    app.jwt.expiration=86400000
+    app.jwt.refresh-token.expiration=604800000
+
+    # -- Upload Dir (path Unix)
+    app.upload.dir=/opt/koperasi/uploads/bukti-bayar
+    app.upload.max-size-mb=1
+
+    # -- Logging
+    logging.level.com.koperasi=DEBUG
+    logging.level.org.springframework.security=INFO
+    logging.level.org.flywaydb=INFO
+
+    # -- Telegram Bot
+    app.telegram.bot-token=${TELEGRAM_BOT_TOKEN}
+    app.telegram.admin-chat-id=${TELEGRAM_ADMIN_CHAT_ID}
+
+    # -- AI Chatbot Groq
+    groq.api.key=${GROQ_API_KEY}
+
+    # -- HikariCP
+    spring.datasource.hikari.pool-name=KoperasiPool
+    spring.datasource.hikari.maximum-pool-size=10
+    spring.datasource.hikari.minimum-idle=3
+    spring.datasource.hikari.connection-timeout=20000
+    spring.datasource.hikari.idle-timeout=300000
+    spring.datasource.hikari.max-lifetime=900000
+    spring.datasource.hikari.leak-detection-threshold=30000
+    spring.datasource.hikari.keepalive-time=60000
+    spring.datasource.hikari.connection-test-query=SELECT 1
+
+    # -- Cache
+    spring.cache.type=simple

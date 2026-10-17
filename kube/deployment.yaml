@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: koperasi
+  namespace: koperasi-dev
+  labels:
+    app: koperasi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: koperasi
+  template:
+    metadata:
+      labels:
+        app: koperasi
+    spec:
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: koperasi
+          # Tag image diganti otomatis oleh Jenkins saat deploy
+          image: 192.168.78.20:5000/koperasi:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_CONFIG_ADDITIONAL_LOCATION
+              value: "file:/config/"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: koperasi-secrets
+                  key: db-password
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: koperasi-secrets
+                  key: JWT_SECRET
+            - name: TELEGRAM_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: koperasi-secrets
+                  key: TELEGRAM_BOT_TOKEN
+            - name: TELEGRAM_ADMIN_CHAT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: koperasi-secrets
+                  key: TELEGRAM_ADMIN_CHAT_ID
+            - name: GROQ_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: koperasi-secrets
+                  key: GROQ_API_KEY
+          volumeMounts:
+            - name: props
+              mountPath: /config
+              readOnly: true
+            - name: uploads
+              mountPath: /opt/koperasi/uploads
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+          startupProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 20
+            failureThreshold: 3
+      volumes:
+        - name: props
+          configMap:
+            name: koperasi-be
+        - name: uploads
+          emptyDir: {}
